@@ -20,11 +20,10 @@
                 <div><i class="fa fa-clock-o"></i> <span tkey="lastShare">Last Share Submitted</span>: <span id="yourLastShare"></span></div>
                 <div><i class="fa fa-cloud-upload"></i> <span tkey="totalHashes">Total Hashes Submitted</span>: <span id="yourHashes"></span></div>
             </div>
-            <div class="col-sm-6">
-                <div class="userChart push-up-10" data-chart="user_hashrate">
-                    <div class="chart">
-                    
-                    </div>                
+            <div class="col-sm-6 userChart">
+                <div class="chart">
+                    <canvas id="chart_hashrate"></canvas>
+                    <a class="chart-style"></a>
                 </div>
             </div> 
 	</div>
@@ -37,13 +36,14 @@
             <div class="col-sm-6 stats push-up-10">
                 <div><i class="fa fa-bank"></i> <span tkey="pendingBalance">Pending Balance</span>: <span id="yourPendingBalance"></span></div>
                 <div><i class="fa fa-money"></i> <span tkey="totalPaid">Total Paid</span>: <span id="yourPaid"></span></div>
+                <div><i class="fa fa-star"></i> <span>Round contribution</span>: <span id="yourRoundShareProportion"></span>%
+                    <span id="slush_round_info"> (shares), <span id="yourRoundScoreProportion"></span>% (<a target="_blank" href="#payments">score</a>)</span></span></div>
                 <div><i class="fa fa-money"></i> <span tkey="payoutEstimate">Current Payout Estimate</span>: <span id="yourPayoutEstimate"></span></div>
             </div>
-            <div class="col-sm-6">
-                <div class="userChart push-up-10" data-chart="user_payments">
-                    <div class="chart">
-                    
-                    </div> 
+            <div class="col-sm-6 userChart">
+                <div class="chart">
+                    <canvas id="chart_payments"></canvas>
+                    <a class="chart-style"></a>
                 </div>
             </div>
         </div>       
@@ -98,6 +98,11 @@
 
 <!-- Javascript -->
 <script>
+// Charts
+var userChartsData = null;
+var chartsInitialized = false;
+var intervalChartsUpdate;
+
 // Update current page
 currentPage = {
     destroy: function(){
@@ -105,6 +110,10 @@ currentPage = {
         if (xhrAddressPoll) xhrAddressPoll.abort();
         if (addressTimeout) clearTimeout(addressTimeout);
         if (xhrGetPayments) xhrGetPayments.abort();
+        if (chartsInitialized) {
+            chartsInitialized = false;
+            clearInterval(intervalChartsUpdate);
+        }
     },
     update: function(){}
 };
@@ -155,8 +164,10 @@ function fetchAddressStats(longpoll){
             updateText('yourPendingBalance', getReadableCoins(data.stats.balance));
 
             var userRoundHashes = parseInt(data.stats.roundHashes || 0);
-	    var poolRoundHashes = parseInt(lastStats.pool.roundHashes || 0);
-	    var lastReward = parseFloat(lastStats.network.reward || 0);
+            var poolRoundHashes = parseInt(lastStats.pool.roundHashes || 0);
+            var userRoundScore = parseFloat(data.stats.roundScore || 0);
+            var poolRoundScore = parseFloat(lastStats.pool.roundScore || 0);
+            var lastReward = parseFloat(lastStats.lastblock.reward || 0);
 	    
             var poolFee = lastStats.config.fee;
             if (Object.keys(lastStats.config.donation).length) {
@@ -168,11 +179,18 @@ function fetchAddressStats(longpoll){
             }
 	    var transferFee = lastStats.config.transferFee;
 	    
-            var payoutEstimatePct = parseFloat(userRoundHashes * 100 / poolRoundHashes)
-	    var payoutEstimate = Math.round(lastReward * (payoutEstimatePct / 100));
+            var share_pct = userRoundHashes * 100 / poolRoundHashes;
+            var score_pct = userRoundScore * 100 / poolRoundScore;
+            updateText('yourRoundShareProportion', Math.round(share_pct * 1000) / 1000);
+            updateText('yourRoundScoreProportion', Math.round(score_pct * 1000) / 1000);
+            if (!lastStats.config.slushMiningEnabled) {
+                $('#slush_round_info').hide();
+            }
+
+            var payoutEstimate = Math.round(lastReward * (score_pct / 100));
             if (transferFee) payoutEstimate = payoutEstimate - transferFee;
 	    if (payoutEstimate < 0) payoutEstimate = 0;
-	    updateText('yourPayoutEstimate', getReadableCoins(payoutEstimate, 4));
+	    updateText('yourPayoutEstimate', getReadableCoins(payoutEstimate));
 	    
             renderPayments(data.payments);
 	    
@@ -182,7 +200,15 @@ function fetchAddressStats(longpoll){
             }
 	    
             $('.yourStats').show();
-            createCharts(data);                                
+
+            if (data.charts) {
+                userChartsData = data.charts;
+                if (!chartsInitialized) {
+                    intervalChartsUpdate = setInterval(createCharts, 60*1000);
+                    createCharts();
+                    chartsInitialized = true;
+                }
+            }	    
 	    
             fetchAddressStats(true);
         },
@@ -254,43 +280,84 @@ $('#yourStatsInput').keyup(function(e){
  * Charts
  **/
 
-// Charts settings
-var graphSettings = {
-    type: 'line',
-    width: '100%',
-    height: '120',
-    lineColor: '#03a9f4',
-    fillColor: 'rgba(3, 169, 244, .4)',
-    spotColor: null,
-    minSpotColor: null,
-    maxSpotColor: null,
-    highlightLineColor: '#236d26',
-    spotRadius: 3,
-    chartRangeMin: 0,
-    drawNormalOnTop: false,
-    tooltipFormat: '<b>{{y}}</b> &ndash; {{offset:names}}'
-};
-
-// Handle charts tooltip
-$(function() {
-    $('[data-toggle="tooltip"]').tooltip();
-});
-
 // Create charts
-function createCharts(data) {
-    if (data.hasOwnProperty("charts")) {
-        var graphData = {
-            hashrate: getGraphData(data.charts.hashrate),
-            payments: getGraphData(data.charts.payments)
-        };
+function createCharts() {
+    if (!userChartsData) return ;
+    var data = userChartsData;
 
-        for(var graphType in graphData) {
-            if(graphData[graphType].values.length > 1) {
-                var settings = jQuery.extend({}, graphSettings);
-                settings.tooltipValueLookups = {names: graphData[graphType].names};
-                var $chart = $('[data-chart=user_' + graphType + ']').show().find('.chart');
-                $chart.sparkline(graphData[graphType].values, settings);
+    var graphData = {
+        hashrate: getGraphData(data.hashrate),
+        payments: getGraphData(data.payments)
+    };
+
+    for (var graphType in graphData) {
+        if (graphData[graphType].values.length > 1) {
+            var $chart = $('#chart_'+graphType);
+            var bgcolor = null, bordercolor = null, borderwidth = null;
+            var colorelem = $chart.siblings('a.chart-style');
+            if (colorelem.length == 1) {
+                bgcolor = colorelem.css('background-color');
+                bordercolor = colorelem.css('border-left-color');
+                borderwidth = parseFloat(colorelem.css('width'));
             }
+            if (bgcolor === null) bgcolor = 'rgba(3, 169, 244, .4)';
+            if (bordercolor === null) bordercolor = '#03a9f4';
+            if (borderwidth === null || isNaN(borderwidth)) borderwidth = 1;
+
+            var chartObj = new Chart(document.getElementById('chart_'+graphType), {
+                type: 'line',
+                data: {
+                    labels: graphData[graphType].names,
+                    datasets: [{
+                        data: graphData[graphType].values,
+                        dataType: graphType,
+                        fill: true,
+                        backgroundColor: bgcolor,
+                        borderColor: bordercolor,
+                        borderWidth: borderwidth
+                    }]
+                },
+                options: {
+                    animation: false,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    legend: { display: false },
+                    elements: { point: { radius: 0, hitRadius: 10, hoverRadius: 5 } },
+                    scales: {
+                        xAxes: [{
+                            display: false,
+                            ticks: { display: false },
+                            gridLines: { display: false }
+                        }],
+                        yAxes: [{
+                            display: false,
+                            ticks: {
+                                display: false,
+                                beginAtZero: true,
+                                userCallback: function(label, index, labels) {
+                                    if (Math.floor(label) === label) return label;
+                                }
+                            },
+                            gridLines: { display: false }
+                        }]
+                    },
+                    layout: {
+                        padding: { top: 15, left: 0, right: 0, bottom: 15 }
+                    },
+                    tooltips: {
+                        callbacks: {
+                            label: function(tooltipItem, data) {
+                                var dataType = data.datasets[tooltipItem.datasetIndex].dataType || '';
+                                var label = tooltipItem.yLabel;
+                                if (dataType == 'hashrate') label = getReadableHashRateString(tooltipItem.yLabel)+'/sec';
+                                else if (dataType == 'payments') label = getReadableCoins(tooltipItem.yLabel);
+                                return ' ' + label;
+                            }
+                        }
+                    }
+                }
+            });
+            $chart.closest('.userChart').show();
         }
     }
 }
@@ -305,7 +372,7 @@ function getGraphData(rawData, fixValueToCoins) {
     if(rawData) {
         for (var i = 0, xy; xy = rawData[i]; i++) {
             graphData.names.push(new Date(xy[0]*1000).toLocaleString());
-            graphData.values.push(fixValueToCoins ? getReadableCoins(xy[1], 4, true) : xy[1]);
+            graphData.values.push(xy[1]);
         }
     }
     
@@ -420,7 +487,7 @@ function getPaymentRowElement(payment, jsonString){
 function getPaymentCells(payment){
     return '<td class="col1">' + formatDate(payment.time) + '</td>' +
            '<td class="col2">' + formatPaymentLink(payment.hash) + '</td>' +
-           '<td class="col3">' + getReadableCoins(payment.amount, 4, false) + '</td>' +
+           '<td class="col3">' + getReadableCoins(payment.amount) + '</td>' +
            '<td class="col4">' + payment.mixin + '</td>';
 }
 
@@ -443,7 +510,7 @@ function getSummaryCells(summary){
     if (summary.count <= 1) text = getTranslation('paymentSummarySingle') ? getTranslation('paymentSummarySingle') : 'On %DATE% you have received %AMOUNT%';
     text = text.replace(/%DATE%/g, summary.date);
     text = text.replace(/%COUNT%/g, summary.count);
-    text = text.replace(/%AMOUNT%/g, getReadableCoins(summary.amount, 4, false));
+    text = text.replace(/%AMOUNT%/g, getReadableCoins(summary.amount));
     return '<td colspan="4">' + text + '</td>';
 }
 

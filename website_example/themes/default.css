@@ -493,6 +493,18 @@ table th.sort:hover{
   font-size: 16px;
   font-weight: normal;
 }
+#marketInfos .infoBox {
+  height: 100px;
+}
+#marketInfos .infoBox .source {
+  font-size: 13px;
+  font-style: italic;
+  color: #fff;
+}
+#marketInfos .infoBox .source a, #marketInfos .infoBox .source a:hover {
+  color: #fff;
+}
+
 
 /* Hash info box */
 .hashInfo {
@@ -502,6 +514,12 @@ table th.sort:hover{
   padding: 15px;
   border-radius: 3px;
   color: #fff;
+  margin-bottom: 30px;
+}
+@media (max-width: 767px){
+  .hashInfo {
+    margin-bottom: 15px;
+  }
 }
 .hashInfo .text {
   font-size: 13px;
@@ -528,6 +546,37 @@ table th.sort:hover{
   font-weight: normal;
 }
 
+/* Slush payment info box */
+.slushInfo {
+  background-color: #014e71;
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.14);
+  cursor: default;
+  padding: 15px;
+  border-radius: 3px;
+  color: #fff;
+  margin-bottom: 30px;
+}
+.slushInfo .text {
+  font-size: 13px;
+  color: #fff;
+  text-transform: uppercase;
+}
+@media (max-width: 767px){
+  .slushInfo {
+    margin-bottom: 15px;
+  }
+}
+.slushInfo .content .value {
+  float: left;
+  font-size: 16px;
+  font-weight: 400;
+  color: #fff;
+  padding: 8px 8px 0 0;
+}
+.slushInfo .content .value a {
+    color: #fff;
+}
+
 /* Pool Statistics */
 .stats > div:not(#addressError) {
   color: #262626; 
@@ -552,11 +601,16 @@ table th.sort:hover{
 .poolChart, .marketChart, .userChart {
   display: none;
 }
-.poolChart .chart, .marketChart .chart {
-  padding: 10px;
+.poolChart .chart, .marketChart .chart, .userChart .chart {
+  height: 140px;
 }
-.userChart .chart {
-  padding: 10px 0;
+.poolChart, .marketChart {
+  margin-bottom: 30px;
+}
+@media (max-width: 767px){
+  .poolChart, .marketChart {
+    margin-bottom: 15px;
+  }
 }
 .poolChart h4,
 .marketChart h4,
@@ -564,13 +618,16 @@ table th.sort:hover{
   text-align: center;
   font-size: 21px;
 }
+.chart a.chart-style {
+  display: none; /* never displayed; we just use it to store the following colors: */
+  background-color: rgba(3, 169, 244, .4);
+  border-color: #03a9f4;
+  width: 1px; /* controls the chart border width (must be specified in px) */
+}
 
 /* Market Rates */
 #marketStats  {
   margin-top: 20px;
-}
-#marketStats .infoBox  {
-  margin-bottom: 15px;
 }
 #marketUpdate {
     display: none;

@@ -1,13 +1,12 @@
 {
     "poolHost": "your.pool.host",
 
-    "coin": "haven",
-    "symbol": "XHV",
-    "coinUnits": 1000000000000,
+    "coin": "qwertycoin",
+    "symbol": "QWC",
+    "coinUnits": 100000000,
     "coinDecimalPlaces": 4,
     "coinDifficultyTarget": 120,
 
-    "daemonType": "default",
     "cnAlgorithm": "cryptonight_heavy",
     "cnVariant": null,
     "cnBlobType": 0,
@@ -28,7 +27,7 @@
         "enabled": true,
         "clusterForks": "auto",
         "poolAddress": "** Your pool wallet address **",
-        "intAddressPrefix": 841588,
+        "intAddressPrefix": 1344012,
         "blockRefreshInterval": 1000,
         "minerTimeout": 900,
         "sslCert": "./cert.pem",
@@ -108,15 +107,14 @@
         "enabled": true,
         "interval": 1800,
         "maxAddresses": 50,
-        "mixin": 5,
+        "mixin": 12,
         "priority": 0,
-        "transferFee": 5000000000,
+        "transferFee": 1000,
         "dynamicTransferFee": true,
         "minerPayFee" : true,
         "minPayment": 1000000000000,
-        "maxPayment": null,
         "maxTransactionAmount": 0,
-        "denomination": 100000000000
+        "denomination": 100000000
     },
 
     "blockUnlocker": {
@@ -147,12 +145,12 @@
 
     "daemon": {
         "host": "127.0.0.1",
-        "port": 17750
+        "port": 8197
     },
 
     "wallet": {
         "host": "127.0.0.1",
-        "port": 17752
+        "port": 8198
     },
 
     "redis": {
@@ -232,9 +230,8 @@
         },
         "botCommands": {
             "stats": "/stats",
-            "report": "/report",
-            "notify": "/notify",
-            "blocks": "/blocks"
+            "enable": "/enable",
+            "disable": "/disable"
         }
     },
     
@@ -250,7 +247,7 @@
     },
 
     "prices": {
-        "source": "tradeogre",
+        "source": "crex24",
         "currency": "USD"
     },
     
@@ -303,10 +300,6 @@
             "payments": {
                 "enabled": true
             }
-        },
-        "blocks": {
-            "enabled": true,
-            "days": 30
         }
     }
 }

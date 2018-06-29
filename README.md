@@ -31,6 +31,7 @@ Features
 * TCP (stratum-like) protocol for server-push based jobs
   * Compared to old HTTP protocol, this has a higher hash rate, lower network/CPU server load, lower orphan
     block percent, and less error prone
+* Support for Cryptonight (Original, Monero v7, Stellite v7), Cryptonight Light (Original, Aeon v7, IPBC) and Cryptonight Heavy (Sumokoin) algorithms.
 * IP banning to prevent low-diff share attacks
 * Socket flooding detection
 * Share trust algorithm to reduce share validation hashing CPU load
@@ -42,7 +43,7 @@ Features
 * Set fixed difficulty on miner client by passing "address" param with "+[difficulty]" postfix
 * Modular components for horizontal scaling (pool server, database, stats/API, payment processing, front-end)
 * SSL support for both pool and API servers
-* Support for Cryptonight (Original, Monero v7, Stellite v7), Cryptonight Light (Original, Aeon v7, IPBC) and Cryptonight Heavy (Sumokoin) algorithms.
+* RBPPS (PROP) payment system
 
 #### Live statistics API
 * Currency network/block difficulty
@@ -95,19 +96,17 @@ Community / Support
 
 * [GitHub Wiki](https://github.com/dvandal/cryptonote-nodejs-pool/wiki)
 * [GitHub Issues](https://github.com/dvandal/cryptonote-nodejs-pool/issues)
+* [Telegram Group](http://t.me/CryptonotePool)
 
 #### Pools Using This Software
 
-* https://graft.blockhashmining.com/
-* https://haven.blockhashmining.com/
-* https://loki.blockhashmining.com/
-* https://masari.blockhashmining.com/
-* https://stellite.blockhashmining.com/
+* https://imaginary.stream/
 * https://graft.anypool.net/
 * https://graft.dark-mine.su/
 * http://itns.proxpool.com/
 * https://bytecoin.pt
 * http://ita.minexmr24.ru/
+* https://pool.croatpirineus.cat
 
 Usage
 ===
@@ -138,9 +137,17 @@ sudo apt-get install redis-server
 ##### Seriously
 Those are legitimate requirements. If you use old versions of Node.js or Redis that may come with your system package manager then you will have problems. Follow the linked instructions to get the last stable versions.
 
-
 [**Redis warning**](http://redis.io/topics/security): It'sa good idea to learn about and understand software that
 you are using - a good place to start with redis is [data persistence](http://redis.io/topics/persistence).
+
+**Do not run the pool as root** : create a new user without ssh access to avoid security issues :
+```bash
+sudo adduser --disabled-password --disabled-login your-user
+```
+To login with this user : 
+```
+sudo su - your-user
+```
 
 #### 1) Downloading & Installing
 
@@ -160,6 +167,9 @@ Copy the `config_examples/COIN.json` file of your choice to `config.json` then o
 
 Explanation for each field:
 ```javascript
+/* Pool host displayed in notifications and front-end */
+"poolHost": "your.pool.host",
+
 /* Used for storage in redis so multiple coins can share the same redis instance. */
 "coin": "graft",
 
@@ -169,8 +179,14 @@ Explanation for each field:
 /* Minimum units in a single coin, see COIN constant in DAEMON_CODE/src/cryptonote_config.h */
 "coinUnits": 10000000000,
 
+/* Number of coin decimals places for notifications and front-end */
+"coinDecimalPlaces": 4,
+  
 /* Coin network time to mine one block, see DIFFICULTY_TARGET constant in DAEMON_CODE/src/cryptonote_config.h */
 "coinDifficultyTarget": 120,
+
+/* Set daemon type. Supported values: default, forknote (Fix block height + 1), bytecoin (ByteCoin Wallet RPC API) */
+"deamonType": "default",
 
 /* Set Cryptonight algorithm settings.
    Supported algorithms: cryptonight (default). cryptonight_light and cryptonight_heavy
@@ -311,9 +327,7 @@ Explanation for each field:
     More about it here: https://mining.bitcoin.cz/help/#!/manual/rewards */
     "slushMining": {
         "enabled": false, // Enables slush mining. Recommended for pools catering to professional miners
-        "weight": 300, // Defines how fast the score assigned to a share declines in time. The value should roughly be equivalent to the average round duration in seconds divided by 8. When deviating by too much numbers may get too high for JS.
-        "blockTime": 60
-        "lastBlockCheckRate": 1 // How often the pool checks the timestamp of the last block. Lower numbers increase load but raise precision of the share value
+        "weight": 300 // Defines how fast the score assigned to a share declines in time. The value should roughly be equivalent to the average round duration in seconds divided by 8. When deviating by too much numbers may get too high for JS.
     }
 },
 
@@ -328,6 +342,7 @@ Explanation for each field:
     "dynamicTransferFee": true, // Enable dynamic transfer fee (fee is multiplied by number of miners)
     "minerPayFee" : true, // Miner pays the transfer fee instead of pool owner when using dynamic transfer fee
     "minPayment": 100000000000, // Miner balance required before sending payment
+    "maxPayment": null, // Maximum miner balance allowed in miner settings
     "maxTransactionAmount": 0, // Split transactions by this amount (to prevent "too big transaction" error)
     "denomination": 10000000000 // Truncate to this precision and store remainder
 },
@@ -344,7 +359,11 @@ Explanation for each field:
     "depth": 60,
     "poolFee": 0.8, // 0.8% pool fee (1% total fee total including donations)
     "devDonation": 0.2, // 0.2% donation to send to pool dev
-    "networkFee": 0.0 // Network/Governance fee (used by some coins like Loki)
+    "networkFee": 0.0, // Network/Governance fee (used by some coins like Loki)
+    
+    /* Some forknote coins have an issue with block height in RPC request, to fix you can enable this option.
+       See: https://github.com/forknote/forknote-pool/issues/48 */
+    "fixBlockHeightRPC": false
 },
 
 /* AJAX API used for front-end website. */
@@ -388,8 +407,6 @@ Explanation for each field:
 
 /* Pool Notifications */
 "notifications": {
-    "poolHost": "your.pool.host",
-    "coinDecimals": 4,
     "emailTemplate": "email_templates/default.txt",
     "emailSubject": {
         "emailAdded": "Your email was registered",
@@ -460,6 +477,7 @@ Explanation for each field:
    See Telegram documentation to setup your bot: https://core.telegram.org/bots#3-how-do-i-create-a-bot */
 "telegram": {
     "enabled": false,
+    "botName": "", // The bot user name.
     "token": "", // The bot unique authorization token
     "channel": "", // The telegram channel id (ex: BlockHashMining)
     "channelStats": {
@@ -487,7 +505,7 @@ Explanation for each field:
 
 /* Prices settings for market and price charts */
 "prices": {
-    "source": "cryptonator", // Price source (cryptonator or tradeogre)
+    "source": "cryptonator", // Exchange (supported values: cryptonator, altex, crex24, cryptopia, stocks.exchange, tradeogre)
     "currency": "USD" // Default currency
 },
 	    
@@ -542,7 +560,12 @@ Explanation for each field:
         "payments": { // Payment chart uses all user payments data stored in DB
             "enabled": true
         }
+    },
+    "blocks": {
+        "enabled": true,
+        "days": 30 // Number of days displayed in chart (if value is 1, display last 24 hours)
     }
+}
 ```
 
 #### 3) Start the pool
@@ -574,12 +597,12 @@ node init.js -module=api
 [Example screenshot](http://i.imgur.com/SEgrI3b.png) of running the pool in single module mode with tmux.
 
 To keep your pool up, on operating system with systemd, you can create add your pool software as a service.  
-Use this [example](https://github.com/VirtuBox/cryptonote-nodejs-pool/blob/master/utils/cryptonote-nodejs-pool.service) and create your service file `/lib/systemd/system/cryptonote-nodejs-pool.service`
+Use this [example](https://github.com/dvandal/cryptonote-nodejs-pool/blob/master/deployment/cryptonote-nodejs-pool.service) to create the systemd service `/lib/systemd/system/cryptonote-nodejs-pool.service`
 Then enable and start the service with the following commands : 
 
 ```
-systemctl enable cryptonote-nodejs-pool.service
-systemctl start cryptonote-nodejs-pool.service
+sudo systemctl enable cryptonote-nodejs-pool.service
+sudo systemctl start cryptonote-nodejs-pool.service
 ```
 
 #### 4) Host the front-end
@@ -595,8 +618,11 @@ Variable explanations:
 /* Must point to the API setup in your config.json file. */
 var api = "http://poolhost:8117";
 
-/* Pool server host to instruct your miners to point to.  */
+/* Pool server host to instruct your miners to point to (override daemon setting if set) */
 var poolHost = "poolhost.com";
+
+/* Number of coin decimals places (override daemon setting if set) */
+"coinDecimalPlaces": 4,
 
 /* Contact email address. */
 var email = "support@poolhost.com";
@@ -663,7 +689,8 @@ You no longer need to include the port in the variable because of the proxy conn
 server {
     server_name api.poolhost.com
     listen 443 ssl http2;
-
+    listen [::]:443 ssl http2;
+    
     ssl_certificate /your/ssl/certificate;
     ssl_certificate_key /your/ssl/certificate_key;
 
@@ -711,8 +738,8 @@ curl 127.0.0.1:18081/json_rpc -d '{"method":"getblockheaderbyheight","params":{"
 ### Monitoring Your Pool
 
 * To inspect and make changes to redis I suggest using [redis-commander](https://github.com/joeferner/redis-commander)
-* To monitor server load for CPU, Network, IO, etc - I suggest using [New Relic](http://newrelic.com/)
-* To keep your pool node script running in background, logging to file, and automatically restarting if it crashes - I suggest using [forever](https://github.com/nodejitsu/forever)
+* To monitor server load for CPU, Network, IO, etc - I suggest using [Netdata](https://github.com/firehol/netdata)
+* To keep your pool node script running in background, logging to file, and automatically restarting if it crashes - I suggest using [forever](https://github.com/nodejitsu/forever) or [PM2](https://github.com/Unitech/pm2)
 
 
 Donations
@@ -727,6 +754,7 @@ Thanks for supporting my works on this project! If you want to make a donation t
 * Monero (XMR): `49WyMy9Q351C59dT913ieEgqWjaN12dWM5aYqJxSTZCZZj1La5twZtC3DyfUsmVD3tj2Zud7m6kqTVDauRz53FqA9zphHaj`
 * Graft (GRFT): `GBqRuitSoU3PFPBAkXMEnLdBRWXH4iDSD6RDxnQiEFjVJhWUi1UuqfV5EzosmaXgpPGE6JJQjMYhZZgWY8EJQn8jQTsuTit`
 * Haven (XHV): `hvxy2RAzE7NfXPLE3AmsuRaZztGDYckCJ14XMoWa6BUqGrGYicLCcjDEjhjGAQaAvHYGgPD7cGUwcYP7nEUs8u6w3uaap9UZTf`
+* IntenseCoin (ITNS): `iz4fRGV8XsRepDtnK8XQDpHc3TbtciQWQ5Z9285qihDkCAvB9VX1yKt6qUCY6sp2TCC252SQLHrjmeLuoXsv4aF42YZtnZQ53`
 * Masari (MSR): `5n7mffxVT9USrq7tcG3TM8HL5yAz7MirUWypXXJfHrNfTcjNtDouLAAGex8s8htu4vBpmMXFzay8KG3jYGMFhYPr2aMbN6i`
 * Stellite (XTL): `Se45GzgpFG3CnvYNwEFnxiRHD2x7YzRnhFLdxjUqXdbv3ysNbfW5U7aUdn87RgMRPM7xwN6CTbXNc7nL5QUgcww11bDeypTe1`
 

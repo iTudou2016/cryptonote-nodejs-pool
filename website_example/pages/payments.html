@@ -52,6 +52,22 @@
             </div>
         </div>
     </div>
+
+    <!-- Payment mechanism -->
+    <div class="col-sm-12" id="slush_description">
+        <div class="slushInfo hoverExpandEffect">
+            <div class="text"><span>Payment system</span></div>
+            <div class="content clearfix">
+                <div class="value"><p>This pool uses the "Score" payment system, under which later
+                  shares submitted by miners receive more weight in determining the miner's reward than earlier shares.
+
+                    <p>For more details (including the specific mathematics involved) see the <a
+                     href="https://slushpool.com/help/manual/rewards">slushpool reward
+                     description</a>.</p>
+                </div>
+            </div>
+        </div>
+    </div>
     
 </div>
 
@@ -91,8 +107,10 @@ currentPage = {
         updateText('paymentsTotal', lastStats.pool.totalPayments.toString());
         updateText('paymentsTotalPaid', lastStats.pool.totalMinersPaid.toString());
         updateText('paymentsInterval', getReadableTime(lastStats.config.paymentsInterval));
-        updateText('paymentsMinimum', getReadableCoins(lastStats.config.minPaymentThreshold, 1));
+        updateText('paymentsMinimum', getReadableCoins(lastStats.config.minPaymentThreshold));
         updateText('paymentsDenomination', getReadableCoins(lastStats.config.denominationUnit, 3));
+        if (!lastStats.config.slushMiningEnabled)
+            $('#slush_description').hide()
         renderPayments(lastStats.pool.payments);
     }
 };
@@ -114,8 +132,8 @@ function parsePayment(time, serializedPayment){
 function getPaymentCells(payment){
     return '<td class="col1">' + formatDate(payment.time) + '</td>' +
            '<td class="col2">' + formatPaymentLink(payment.hash) + '</td>' +
-           '<td class="col3">' + getReadableCoins(payment.amount, 4, false) + '</td>' +
-           '<td class="col4">' + getReadableCoins(payment.fee, 4, false) + '</td>' +
+           '<td class="col3">' + getReadableCoins(payment.amount) + '</td>' +
+           '<td class="col4">' + getReadableCoins(payment.fee) + '</td>' +
            '<td class="col5">' + payment.mixin + '</td>' +
            '<td class="col6">' + payment.recipients + '</td>';
 }

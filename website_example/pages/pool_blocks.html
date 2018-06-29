@@ -27,19 +27,6 @@
         </div>
     </div>
 
-    <!-- Efficiency -->
-    <div class="col-lg-3 col-sm-4">
-        <div class="infoBox hoverExpandEffect">
-            <div class="icon">
-                <span class="fa fa-line-chart"></span>
-            </div>
-            <div class="content">
-                <div class="text"><span tkey="efficiency">Efficiency</span></div>
-                <div class="value"><span id="efficiency">N/A</span></div>
-            </div>
-        </div>
-    </div>
-    
     <!-- Average Luck -->
     <div class="col-lg-3 col-sm-4">
         <div class="infoBox hoverExpandEffect">
@@ -53,6 +40,15 @@
         </div>
     </div>
     
+</div>
+
+<!-- Chart -->
+<div id="blocksChart" class="card padding-15 padding-t-5 padding-b-5">
+    <h4 id="blocksChartTitle">Blocks found</h4>
+    <div class="chart" style="height:200px;">
+        <canvas id="blocksChartObj"></canvas>
+        <a class="chart-style"></a>
+    </div>
 </div>
 
 <!-- Report -->
@@ -82,6 +78,9 @@
 
 <!-- Javascript -->
 <script>
+// Hide blocks chart on load
+$('#blocksChart').hide();
+
 // Update current page
 currentPage = {
     destroy: function(){
@@ -98,12 +97,89 @@ currentPage = {
         }
         updateText('blocksMaturityCount', lastStats.config.depth.toString());
 
-        $('#efficiency').html(formatPercent(lastStats.pool.efficiency));
         $('#averageLuck').html(formatLuck(lastStats.pool.totalDiff, lastStats.pool.totalShares));
 
-        renderBlocks(lastStats.pool.blocks);	
+        if (lastStats.charts.blocks) {
+            generateChart(lastStats.charts.blocks);
+        }
+        renderBlocks(lastStats.pool.blocks);
     }
 };
+
+// Chart
+var displayedChart = false;
+function generateChart(data) {
+    if (displayedChart || !data || data === "undefined") return ;
+
+    var chartDays = lastStats.config.blocksChartDays || null;
+    var title = getTranslation('poolBlocks') ? getTranslation('poolBlocks') : 'Blocks found';
+    if (chartDays) {
+        if (chartDays === 1) title = getTranslation('blocksFoundLast24') ? getTranslation('blocksFoundLast24') : 'Blocks found in the last 24 hours';
+        else title = getTranslation('blocksFoundLastDays') ? getTranslation('blocksFoundLastDays') : 'Blocks found in the last {DAYS} days';
+        title = title.replace('{DAYS}', chartDays);
+    }
+    updateText('blocksChartTitle', title);
+
+    var labels = [];
+    var values = [];
+
+    for (var key in data) {
+        var label = key;
+        if (chartDays && chartDays === 1) {
+            var keyParts = key.split(' ');
+            label = keyParts[1].replace(':00', '');
+        }
+        labels.push(label);
+        values.push(data[key]);
+    }
+
+    var $chart = $('#blocksChartObj');
+    var bgcolor = null, bordercolor = null, borderwidth = null;
+    var colorelem = $chart.siblings('a.chart-style');
+    if (colorelem.length == 1) {
+        bgcolor = colorelem.css('background-color');
+        bordercolor = colorelem.css('border-left-color');
+        borderwidth = parseFloat(colorelem.css('width'));
+    }
+    if (bgcolor === null) bgcolor = 'rgba(3, 169, 244, .4)';
+    if (bordercolor === null) bordercolor = '#03a9f4';
+    if (borderwidth === null || isNaN(borderwidth)) borderwidth = 1;
+
+    var chart = new Chart(document.getElementById('blocksChartObj'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Blocks',
+                data: values,
+                fill: false,
+                backgroundColor: bgcolor,
+                borderColor: bordercolor,
+                borderWidth: borderwidth
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            legend: { display: false },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        userCallback: function(label, index, labels) {
+                            if (Math.floor(label) === label) return label;
+                        }
+                    }
+                }],
+            },
+            layout: {
+                padding: { top: 0, left: 0, right: 0, bottom: 0 }
+            }
+        }
+    });
+    $chart.show();
+    displayedChart = true;
+}
 
 // Parse block data
 function parseBlock(height, serializedBlock){
@@ -118,7 +194,7 @@ function parseBlock(height, serializedBlock){
         reward: parts[5]
     };
 
-    var toGo = lastStats.config.depth - (lastStats.network.height - block.height);
+    var toGo = lastStats.config.depth - (lastStats.network.height - block.height) + 1;
     if(toGo > 1){
         block.maturity = toGo + ' to go';
     } 
@@ -170,7 +246,7 @@ function getBlockRowElement(block, jsonString){
         reward = "Waiting...";
     }
     else{
-        reward = getReadableCoins(block.reward, 4, true);
+        reward = getReadableCoins(block.reward, null, true);
     }
     
     var columns =
@@ -194,7 +270,7 @@ function renderBlocks(blocksResults){
     for (var i = 0; i < blocksResults.length; i += 2){
         var block = parseBlock(blocksResults[i + 1], blocksResults[i]);
         var blockJson = JSON.stringify(block);
-        
+
         var existingRow = document.getElementById('blockRow' + block.height);
         if (existingRow && existingRow.getAttribute('data-json') !== blockJson){
             $(existingRow).replaceWith(getBlockRowElement(block, blockJson));

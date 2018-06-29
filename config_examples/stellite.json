@@ -1,8 +1,13 @@
 {
-    "coin": "Stellitecoin",
+    "poolHost": "your.pool.host",
+
+    "coin": "stellite",
     "symbol": "XTL",
     "coinUnits": 10000,
+    "coinDecimalPlaces": 4,
     "coinDifficultyTarget": 60,
+
+    "daemonType": "default",
     "cnAlgorithm": "cryptonight",
     "cnVariant": 1,
     "cnBlobType": 0,
@@ -101,7 +106,7 @@
 
     "payments": {
         "enabled": true,
-        "interval": 300,
+        "interval": 1800,
         "maxAddresses": 50,
         "mixin": 6,
         "priority": 0,
@@ -109,6 +114,7 @@
         "dynamicTransferFee": true,
         "minerPayFee" : true,
         "minPayment": 100000,
+        "maxPayment": null,
         "maxTransactionAmount": 0,
         "denomination": 10000
     },
@@ -158,8 +164,6 @@
     },
 
     "notifications": {
-        "poolHost": "your.pool.host",
-        "coinDecimals": 4,
         "emailTemplate": "email_templates/default.txt",
         "emailSubject": {
             "emailAdded": "Your email was registered",
@@ -219,6 +223,7 @@
 
     "telegram": {
         "enabled": false,
+        "botName": "",
         "token": "",
         "channel": "",
         "channelStats": {
@@ -227,8 +232,9 @@
         },
         "botCommands": {
             "stats": "/stats",
-            "enable": "/enable",
-            "disable": "/disable"
+            "report": "/report",
+            "notify": "/notify",
+            "blocks": "/blocks"
         }
     },
     
@@ -297,6 +303,10 @@
             "payments": {
                 "enabled": true
             }
+        },
+        "blocks": {
+            "enabled": true,
+            "days": 30
         }
     }
 }

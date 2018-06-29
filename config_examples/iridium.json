@@ -1,16 +1,16 @@
 {
     "poolHost": "your.pool.host",
 
-    "coin": "haven",
-    "symbol": "XHV",
-    "coinUnits": 1000000000000,
+    "coin": "iridium",
+    "symbol": "IRD",
+    "coinUnits": 100000000,
     "coinDecimalPlaces": 4,
-    "coinDifficultyTarget": 120,
+    "coinDifficultyTarget": 175,
 
     "daemonType": "default",
-    "cnAlgorithm": "cryptonight_heavy",
-    "cnVariant": null,
-    "cnBlobType": 0,
+    "cnAlgorithm": "cryptonight_light",
+    "cnVariant": 1,
+    "cnBlobType": 2,
 
     "logging": {
         "files": {
@@ -28,7 +28,7 @@
         "enabled": true,
         "clusterForks": "auto",
         "poolAddress": "** Your pool wallet address **",
-        "intAddressPrefix": 841588,
+        "intAddressPrefix": null,
         "blockRefreshInterval": 1000,
         "minerTimeout": 900,
         "sslCert": "./cert.pem",
@@ -110,19 +110,19 @@
         "maxAddresses": 50,
         "mixin": 5,
         "priority": 0,
-        "transferFee": 5000000000,
+        "transferFee": 5000000,
         "dynamicTransferFee": true,
         "minerPayFee" : true,
-        "minPayment": 1000000000000,
+        "minPayment": 100000000,
         "maxPayment": null,
         "maxTransactionAmount": 0,
-        "denomination": 100000000000
+        "denomination": 10000000
     },
 
     "blockUnlocker": {
         "enabled": true,
         "interval": 30,
-        "depth": 60,
+        "depth": 20,
         "poolFee": 0.8,
         "devDonation": 0.2,
         "networkFee": 0.0
@@ -147,12 +147,12 @@
 
     "daemon": {
         "host": "127.0.0.1",
-        "port": 17750
+        "port": 13007
     },
 
     "wallet": {
         "host": "127.0.0.1",
-        "port": 17752
+        "port": 13008
     },
 
     "redis": {
